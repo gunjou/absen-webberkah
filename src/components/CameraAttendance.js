@@ -3,6 +3,7 @@ import { IoMdClose } from "react-icons/io";
 import { FaCheckCircle, FaUndo } from "react-icons/fa";
 import CameraComponent from "./CameraComponent";
 import LoadingOverlay from "./LoadingOverlay";
+import Api from "../Api";
 
 const CameraAttendance = ({ isOpen, onClose, mode, onAttendanceSuccess }) => {
   const [image, setImage] = useState(null);
@@ -65,29 +66,60 @@ const CameraAttendance = ({ isOpen, onClose, mode, onAttendanceSuccess }) => {
         async (position) => {
           const { latitude, longitude } = position.coords;
           const resizedImage = await resizeImage(image);
-          const blob = await (await fetch(resizedImage)).blob();
+
+          // Ubah base64 ke Blob
+          const fetchResponse = await fetch(resizedImage);
+          const blob = await fetchResponse.blob();
 
           const formData = new FormData();
+          // Pastikan key 'file' sesuai dengan yang diharapkan backend (bisa 'image' atau 'file')
           formData.append("file", blob, "absensi.jpg");
           formData.append("latitude", latitude);
           formData.append("longitude", longitude);
-          formData.append("type", mode); // 'masuk', 'istirahat_mulai', dll
 
-          // SIMULASI API CALL
-          setTimeout(() => {
-            console.log("Data Sent:", { latitude, longitude, mode });
+          try {
+            let response;
+
+            // PENTING: Hapus header Content-Type agar browser otomatis mengaturnya ke multipart/form-data
+            const config = {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            };
+
+            if (mode === "masuk") {
+              response = await Api.post("/absensi/check-in", formData, config);
+            } else if (mode === "selesai_istirahat") {
+              response = await Api.put(
+                "/absensi/istirahat-selesai",
+                formData,
+                config
+              );
+            } else if (mode === "pulang") {
+              response = await Api.put("/absensi/check-out", formData, config);
+            }
+
+            if (response.data.success) {
+              onAttendanceSuccess();
+              onClose();
+            }
+          } catch (apiError) {
+            // Menampilkan pesan error detail dari backend jika ada
+            const errorMsg =
+              apiError.response?.data?.message || "Gagal mengirim data absensi";
+            alert(`Error: ${errorMsg}`);
+          } finally {
             setIsLoading(false);
-            onAttendanceSuccess(); // Callback untuk refresh data dashboard
-            onClose();
-          }, 2000);
+          }
         },
         (err) => {
           alert("Izin lokasi diperlukan untuk absen!");
           setIsLoading(false);
-        }
+        },
+        { enableHighAccuracy: true } // Akurasi tinggi untuk koordinat
       );
     } catch (error) {
-      alert("Terjadi kesalahan.");
+      alert("Terjadi kesalahan teknis.");
       setIsLoading(false);
     }
   };
@@ -159,9 +191,7 @@ const CameraAttendance = ({ isOpen, onClose, mode, onAttendanceSuccess }) => {
                 <FaUndo /> Ulangi
               </button>
               <button
-                onClick={() => {
-                  /* Panggil handleSave Anda */
-                }}
+                onClick={handleSave}
                 className="flex-1 py-4 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-200 flex items-center justify-center gap-2 active:scale-95 transition"
               >
                 <FaCheckCircle /> Kirim

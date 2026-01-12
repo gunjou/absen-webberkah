@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MdOutlineAccountCircle,
@@ -22,6 +22,12 @@ const Login = () => {
 
   const handleToggle = () => setShowPassword(!showPassword);
 
+  useEffect(() => {
+    // Jika masuk ke halaman login, bersihkan semua sesi lama
+    localStorage.clear();
+    window.isLoggingOut = false; // Reset flag logout
+  }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -30,35 +36,46 @@ const Login = () => {
       setError("Username dan password wajib diisi");
       return;
     }
+
     setIsLoading(true);
+
     try {
       const response = await Api.post("/auth/pegawai/login", {
-        username,
-        password,
+        username: username,
+        password: password,
       });
 
-      const { access_token, refresh_token, pegawai } = response.data.data;
+      if (response.data.success) {
+        const { access_token, refresh_token, user } = response.data.data;
 
-      // =========================
-      // Simpan ke localStorage
-      // =========================
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("refresh_token", refresh_token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({ nama: pegawai.nama_lengkap, account_type: "pegawai" })
-      );
+        localStorage.setItem("token", access_token);
+        localStorage.setItem("refresh_token", refresh_token);
 
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: user.id_pegawai,
+            username: user.username,
+            account_type: "pegawai",
+          })
+        );
+
+        setIsLoading(false);
+
+        navigate("/dashboard");
+      }
+    } catch (error) {
       setIsLoading(false);
 
-      // redirect
-      navigate("/dashboard");
-    } catch (err) {
-      setIsLoading(false);
-
-      const msg = err.response?.data?.message || "Terjadi kesalahan saat login";
-
-      setError(msg);
+      if (error.response) {
+        const message =
+          error.response.data?.status || error.response.data?.message;
+        setError(message || "Gagal Login: Kredensial tidak valid");
+      } else if (error.request) {
+        setError("Tidak ada respon dari server. Pastikan koneksi aktif.");
+      } else {
+        setError("Terjadi kesalahan sistem saat mencoba login.");
+      }
     }
   };
 
