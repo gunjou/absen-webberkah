@@ -1,41 +1,48 @@
-import React from "react";
-import {
-  FiArrowLeft,
-  FiUser,
-  FiMapPin,
-  FiBookOpen,
-  FiCreditCard,
-  FiCheckCircle,
-} from "react-icons/fi";
+import React, { useState, useEffect } from "react";
+import { FiArrowLeft, FiUser, FiMapPin, FiCreditCard } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import Api from "../Api"; // Pastikan path import benar
+import dayjs from "dayjs";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const user = {
-    nama: "Ahmad Bagus Prasetyo",
-    nik: "202409010042",
-    jabatan: "Senior Web Developer",
-    data_pribadi: {
-      email: "ahmad.bagus@company.com",
-      telepon: "0812-3456-7890",
-      alamat: "Jl. Merdeka No. 123, Mataram",
-      tgl_lahir: "12 Mei 1995",
-    },
-    pendidikan: {
-      jenjang: "S1 Teknik Informatika",
-      institusi: "Universitas Mataram",
-    },
-    rekening: {
-      bank: "Bank Central Asia (BCA)",
-      nomor: "8720441230",
-    },
-    lokasi_izin: ["Kantor Pusat Mataram", "Gudang Cakranegara"],
-  };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const res = await Api.get("/pegawai/profile-absen");
+        setProfile(res.data.data);
+      } catch (err) {
+        console.error("Gagal memuat profil:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  if (!profile && loading) {
+    return (
+      <div className="h-[100dvh] bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-12 h-12">
+            <div className="absolute inset-0 border-4 border-custom-merah/20 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-transparent border-t-custom-merah rounded-full animate-spin"></div>
+          </div>
+          <p className="text-[10px] font-black text-custom-gelap uppercase tracking-[3px]">
+            Memuat Data...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] bg-gray-50 font-poppins flex flex-col overflow-hidden text-custom-gelap">
-      {/* 1. Slim Header Profile - Tinggi dikurangi (h-48) */}
+      {/* 1. Header Section */}
       <div className="relative bg-gradient-to-br from-custom-merah to-custom-gelap h-40 rounded-b-[45px] p-6 pt-2 shadow-xl flex-shrink-0 z-0">
         <div className="flex justify-between items-start mt-2">
           <button
@@ -46,87 +53,85 @@ const Profile = () => {
           </button>
         </div>
 
-        {/* Info Pegawai yang lebih compact */}
         <div className="flex items-center gap-5 mt-4 px-2">
-          <div className="w-16 h-16 bg-white rounded-[22px] shadow-2xl flex items-center justify-center flex-shrink-0 border-2 border-white/20">
-            <FiUser size={32} className="text-gray-300" />
+          <div className="w-16 h-16 bg-white rounded-[22px] shadow-2xl flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-white/20">
+            {profile.image_path ? (
+              <img
+                src={profile.image_path}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <FiUser size={32} className="text-gray-300" />
+            )}
           </div>
           <div className="overflow-hidden">
             <h1 className="text-lg font-black text-white uppercase tracking-tight truncate">
-              {user.nama}
+              {profile.nama_lengkap}
             </h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest">
-                {user.nik}
+                {profile.nip}
               </span>
               <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest italic truncate">
-                {user.jabatan}
+                {profile.jabatan} • {profile.departemen}
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. Content Area - Margin top disesuaikan */}
-      <div className="pt-5 px-6 flex-1 overflow-y-auto pb-10 z-10">
+      {/* 2. Content Area */}
+      <div className="pt-5 px-6 flex-1 overflow-y-auto pb-10 z-10 custom-scrollbar">
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {/* Section: Data Pribadi */}
+          {/* Data Pribadi */}
           <section className="bg-white rounded-[30px] p-6 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[2px]">
-                Data Pribadi
-              </h3>
-              <FiUser className="text-custom-merah" size={14} />
-            </div>
+            <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[2px] mb-4">
+              Data Pribadi
+            </h3>
             <div className="grid grid-cols-1 gap-4">
-              <InfoBox
-                label="Email Perusahaan"
-                value={user.data_pribadi.email}
-              />
-              <InfoBox
-                label="Nomor Telepon"
-                value={user.data_pribadi.telepon}
-              />
+              <InfoBox label="Email" value={profile.email} />
+              <InfoBox label="Nomor Telepon" value={profile.no_telepon} />
               <InfoBox
                 label="Tanggal Lahir"
-                value={user.data_pribadi.tgl_lahir}
+                value={dayjs(profile.tanggal_lahir).format("DD MMMM YYYY")}
               />
             </div>
           </section>
 
-          {/* Section: Rekening (Style Kartu) */}
+          {/* Informasi Payroll */}
           <section className="bg-white rounded-[30px] p-6 shadow-sm border border-gray-100">
             <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[2px] mb-4">
               Informasi Payroll
             </h3>
-            <div className="bg-gradient-to-r from-gray-900 to-custom-gelap p-5 rounded-2xl text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-900 to-custom-gelap p-5 rounded-2xl text-white relative overflow-hidden shadow-lg shadow-gray-200">
               <FiCreditCard
                 className="absolute -right-4 -bottom-4 opacity-10"
                 size={100}
               />
               <p className="text-[8px] font-black text-white/40 uppercase mb-1">
-                {user.rekening.bank}
+                {profile.rekening.nama_bank}
               </p>
               <p className="text-base font-black tracking-[3px]">
-                {user.rekening.nomor}
+                {profile.rekening.no_rekening}
               </p>
               <p className="text-[9px] font-bold text-white/60 mt-2 uppercase">
-                {user.nama}
+                {profile.rekening.atas_nama}
               </p>
             </div>
           </section>
 
-          {/* Section: Pendidikan & Lokasi (Compact Row) */}
+          {/* Pendidikan & Wilayah */}
           <div className="grid grid-cols-1 gap-4">
             <section className="bg-white rounded-[30px] p-6 shadow-sm border border-gray-100">
               <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[2px] mb-3">
                 Pendidikan Terakhir
               </h3>
               <p className="text-xs font-black text-custom-gelap uppercase">
-                {user.pendidikan.jenjang}
+                {profile.pendidikan.jenjang} - {profile.pendidikan.jurusan}
               </p>
               <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">
-                {user.pendidikan.institusi}
+                {profile.pendidikan.institusi}
               </p>
             </section>
 
@@ -135,7 +140,7 @@ const Profile = () => {
                 Wilayah Absensi
               </h3>
               <div className="flex flex-wrap gap-2">
-                {user.lokasi_izin.map((lokasi, idx) => (
+                {profile.wilayah_absensi.map((lokasi, idx) => (
                   <div
                     key={idx}
                     className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100"
@@ -164,7 +169,7 @@ const InfoBox = ({ label, value }) => (
     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">
       {label}
     </p>
-    <p className="text-xs font-black text-custom-gelap uppercase mt-0.5">
+    <p className="text-xs font-black text-custom-gelap mt-0.5">
       {value || "-"}
     </p>
   </div>

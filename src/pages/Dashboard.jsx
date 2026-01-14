@@ -114,6 +114,24 @@ const Dashboard = () => {
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isDropdownOpen &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   const handleMainAction = async () => {
     let mode = "";
     if (!presensi.jam_masuk) mode = "masuk";
