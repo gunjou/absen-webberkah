@@ -32,3 +32,10 @@ export const formatRupiah = (angka) => {
     minimumFractionDigits: 0,
   }).format(angka);
 };
+
+export const formatTerlambat = (totalMenit) => {
+  if (!totalMenit || totalMenit <= 0) return null;
+  const jam = Math.floor(totalMenit / 60);
+  const menit = totalMenit % 60;
+  return jam > 0 ? `${jam} Jam ${menit} Menit` : `${menit} Menit`;
+};

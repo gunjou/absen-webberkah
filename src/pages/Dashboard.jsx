@@ -15,7 +15,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/id";
 
 import Api from "../Api"; // Import instance axios Anda
-import { toTitleCase } from "../utils/Helper";
+import { formatTerlambat, toTitleCase } from "../utils/Helper";
 import ShiftPickerModal from "../components/ShiftPickerModal";
 
 const Dashboard = () => {
@@ -113,13 +113,6 @@ const Dashboard = () => {
   }, []);
 
   const toggleDropdown = () => setIsDropdownOpen(!isDropdownOpen);
-
-  const formatTerlambat = (totalMenit) => {
-    if (!totalMenit || totalMenit <= 0) return null;
-    const jam = Math.floor(totalMenit / 60);
-    const menit = totalMenit % 60;
-    return jam > 0 ? `${jam} Jam ${menit} Menit` : `${menit} Menit`;
-  };
 
   const handleMainAction = async () => {
     let mode = "";
