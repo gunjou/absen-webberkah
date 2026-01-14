@@ -16,6 +16,7 @@ import "dayjs/locale/id";
 
 import Api from "../Api"; // Import instance axios Anda
 import { toTitleCase } from "../utils/Helper";
+import ShiftPickerModal from "../components/ShiftPickerModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ const Dashboard = () => {
 
   // Data State
   const [pegawai, setPegawai] = useState({ nama: "" });
+  const [isShift, setIsShift] = useState(false);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [selectedShiftId, setSelectedShiftId] = useState(null);
   const [shift, setShift] = useState({
     mulai: "08:00",
     selesai: "17:00",
@@ -66,6 +70,15 @@ const Dashboard = () => {
 
       // Map Pegawai
       setPegawai({ nama: data.pegawai.nama_panggilan });
+
+      // Map Check Bisa milih shift
+      setIsShift(data.pegawai.is_shift === 1 || data.pegawai.is_shift === true);
+
+      setShift({
+        mulai: data.jam_kerja.jam_mulai,
+        selesai: data.jam_kerja.jam_selesai,
+        nama: data.jam_kerja.nama_shift,
+      });
 
       // Map Jam Kerja
       setShift({
@@ -121,8 +134,21 @@ const Dashboard = () => {
       return;
     }
 
+    // Jika mode masuk pegawai dan bisa pilih shift
+    if (mode === "masuk" && isShift) {
+      setShowShiftModal(true);
+      return;
+    }
+
     // Alur lainnya tetap buka kamera
     setAttendanceMode(mode);
+    setIsCameraOpen(true);
+  };
+
+  const handleConfirmShift = (shiftId) => {
+    setSelectedShiftId(shiftId);
+    setShowShiftModal(false);
+    setAttendanceMode("masuk");
     setIsCameraOpen(true);
   };
 
@@ -345,12 +371,22 @@ const Dashboard = () => {
         </div>
       </div>
 
+      <ShiftPickerModal
+        isOpen={showShiftModal}
+        onClose={() => setShowShiftModal(false)}
+        onConfirm={handleConfirmShift} // Dashboard tetap menerima ID yang dipilih untuk diteruskan ke Kamera
+      />
+
       {/* Camera Component */}
       <CameraAttendance
         isOpen={isCameraOpen}
-        onClose={() => setIsCameraOpen(false)}
+        onClose={() => {
+          setIsCameraOpen(false);
+          setSelectedShiftId(null);
+        }}
         mode={attendanceMode}
-        onAttendanceSuccess={() => fetchDashboardData()} // Refresh data setelah absen
+        shiftId={selectedShiftId} // Props baru untuk dikirim ke API
+        onAttendanceSuccess={() => fetchDashboardData()}
       />
 
       {/* MODAL KONFIRMASI ISTIRAHAT */}

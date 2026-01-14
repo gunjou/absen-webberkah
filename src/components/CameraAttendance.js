@@ -5,7 +5,13 @@ import CameraComponent from "./CameraComponent";
 import LoadingOverlay from "./LoadingOverlay";
 import Api from "../Api";
 
-const CameraAttendance = ({ isOpen, onClose, mode, onAttendanceSuccess }) => {
+const CameraAttendance = ({
+  isOpen,
+  onClose,
+  mode,
+  shiftId,
+  onAttendanceSuccess,
+}) => {
   const [image, setImage] = useState(null);
   const [showCamera, setShowCamera] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,6 +82,10 @@ const CameraAttendance = ({ isOpen, onClose, mode, onAttendanceSuccess }) => {
           formData.append("file", blob, "absensi.jpg");
           formData.append("latitude", latitude);
           formData.append("longitude", longitude);
+
+          if (shiftId) {
+            formData.append("id_jam_kerja", shiftId);
+          }
 
           try {
             let response;
