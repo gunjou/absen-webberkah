@@ -32,6 +32,7 @@ const Dashboard = () => {
 
   // Data State
   const [pegawai, setPegawai] = useState({ nama: "" });
+  const [activeIzin, setActiveIzin] = useState(null);
   const [isShift, setIsShift] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [selectedShiftId, setSelectedShiftId] = useState(null);
@@ -60,6 +61,23 @@ const Dashboard = () => {
     if (hour >= 15 && hour < 18) return "Selamat Sore";
     return "Selamat Malam";
   };
+
+  useEffect(() => {
+    const checkActiveIzin = async () => {
+      try {
+        setLoading(true);
+        const today = dayjs().format("YYYY-MM-DD");
+        const res = await Api.get(`/perizinan/aktif?tanggal=${today}`);
+        if (res.data.data && res.data.data.length > 0) {
+          setActiveIzin(res.data.data[0]);
+        }
+      } catch (err) {
+        console.error("Gagal cek izin aktif", err);
+      }
+      setLoading(false);
+    };
+    checkActiveIzin();
+  }, []);
 
   // Fetch Data dari API
   const fetchDashboardData = async () => {
@@ -255,12 +273,15 @@ const Dashboard = () => {
         </div>
 
         {/* Floating Card */}
+        {/* Floating Card */}
         <div className="absolute -bottom-14 left-6 right-6 bg-white rounded-[35px] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] p-6 border border-gray-50 h-[120px] flex flex-col justify-center">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
               <div
                 className={`w-2 h-2 rounded-full ${
-                  presensi.jam_keluar
+                  activeIzin
+                    ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                    : presensi.jam_keluar
                     ? "bg-green-500"
                     : "bg-custom-merah animate-pulse"
                 }`}
@@ -275,6 +296,7 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-center justify-between gap-5 mt-auto">
+            {/* Jam Kerja tetap tampil di sisi kiri */}
             <div className="flex-shrink-0">
               <p className="text-[10px] text-gray-400 uppercase font-black tracking-[3px] mb-1">
                 Jam Kerja
@@ -284,8 +306,19 @@ const Dashboard = () => {
               </h2>
             </div>
 
-            {/* Logic Kondisi: Tombol vs Pesan Selesai */}
-            {!presensi.jam_keluar ? (
+            {/* LOGIKA PENGGANTI TOMBOL */}
+            {activeIzin ? (
+              /* Tampilan seukuran tombol (h-[52px]) jika ada izin aktif */
+              <div className="flex-1 h-[52px] flex flex-col items-center justify-center bg-yellow-50/80 rounded-[22px] border border-blue-100 animate-in fade-in slide-in-from-right-2 duration-500">
+                <p className="text-[10px] font-black text-yellow-700 uppercase tracking-widest leading-none">
+                  Izin Aktif
+                </p>
+                <p className="text-[8px] font-bold text-yellow-500 uppercase mt-1 tracking-tighter">
+                  {activeIzin.nama_izin} ({activeIzin.status_approval})
+                </p>
+              </div>
+            ) : !presensi.jam_keluar ? (
+              /* Tombol Absen Normal */
               <button
                 onClick={handleMainAction}
                 className="flex-1 bg-gradient-to-r from-custom-merah to-custom-gelap text-white h-[52px] px-4 rounded-[22px] text-xs font-black shadow-lg shadow-custom-merah/30 active:scale-95 transition-all uppercase tracking-widest"
@@ -300,8 +333,8 @@ const Dashboard = () => {
                 {presensi.istirahat_selesai && "Absen Pulang"}
               </button>
             ) : (
-              /* Placeholder Pesan Selesai dengan Tinggi yang Sama (h-[52px]) agar ukuran kartu tetap */
-              <div className="flex-1 h-[52px] flex flex-col items-center justify-center bg-green-50/50 rounded-[22px] border border-green-100 border-dashed animate-in fade-in zoom-in duration-500">
+              /* Pesan Selesai */
+              <div className="flex-1 h-[52px] flex flex-col items-center justify-center bg-green-50/50 rounded-[22px] border border-green-100 border-dashed">
                 <p className="text-[9px] font-black text-green-700 uppercase tracking-[1px] text-center leading-tight">
                   Terima kasih sudah <br /> bekerja hari ini!
                 </p>

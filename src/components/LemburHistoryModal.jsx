@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { IoMdClose } from "react-icons/io";
 import {
   FiCheckCircle,
@@ -9,8 +9,35 @@ import {
   FiAlertCircle,
 } from "react-icons/fi";
 import dayjs from "dayjs";
+import Api from "../Api";
 
-const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
+const LemburHistoryModal = ({ isOpen, onClose }) => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch data saat modal terbuka
+  useEffect(() => {
+    if (isOpen) {
+      const fetchHistory = async () => {
+        setLoading(true);
+        try {
+          // Mengambil data bulan & tahun saat ini
+          const bulan = dayjs().month() + 1;
+          const tahun = dayjs().year();
+          const res = await Api.get(
+            `/lembur/history?bulan=${bulan}&tahun=${tahun}`
+          );
+          setHistory(res.data.data || []);
+        } catch (err) {
+          console.error("Gagal load history lembur:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchHistory();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -22,9 +49,9 @@ const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
             <h2 className="text-xl font-black text-custom-gelap uppercase tracking-widest leading-none">
               Riwayat Lembur
             </h2>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">
+            {/* <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">
               Pantau jam lembur & upah
-            </p>
+            </p> */}
           </div>
           <button
             onClick={onClose}
@@ -35,28 +62,39 @@ const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
         </div>
 
         {/* List Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-gray-50/30">
-          {data && data.length > 0 ? (
-            data.map((item, index) => {
-              const isApproved = item.status?.toLowerCase() === "approved";
-              const isPending = item.status?.toLowerCase() === "pending";
-              const isRejected = item.status?.toLowerCase() === "rejected";
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-gray-50/30 custom-scrollbar min-h-[300px] flex flex-col">
+          {loading ? (
+            /* Simple Spinner */
+            <div className="flex-1 flex flex-col items-center justify-center py-20">
+              <div className="relative w-10 h-10 mb-4">
+                <div className="absolute inset-0 border-4 border-custom-merah/10 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-transparent border-t-custom-merah rounded-full animate-spin"></div>
+              </div>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] animate-pulse">
+                Menghubungkan...
+              </p>
+            </div>
+          ) : history && history.length > 0 ? (
+            history.map((item, index) => {
+              const status = item.status_approval?.toLowerCase();
+              const isApproved = status === "approved";
+              const isPending = status === "pending";
+              const isRejected = status === "rejected";
 
               return (
                 <div
-                  key={index}
+                  key={item.id_lembur || index}
                   className="bg-white p-5 rounded-[35px] border border-gray-100 shadow-sm relative overflow-hidden transition-all active:scale-[0.98]"
                 >
-                  {/* Status Indicator Bar */}
                   <div
                     className={`absolute left-0 top-0 bottom-0 w-2 ${
                       isApproved
-                        ? "bg-blue-500"
+                        ? "bg-green-500"
                         : isPending
                         ? "bg-orange-400"
                         : "bg-red-500"
                     }`}
-                  ></div>
+                  />
 
                   <div className="flex justify-between items-start pl-2">
                     <div className="space-y-3 flex-1">
@@ -64,13 +102,13 @@ const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
                         <span
                           className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase border ${
                             isApproved
-                              ? "bg-blue-50 text-blue-600 border-blue-100"
+                              ? "bg-green-50 text-green-600 border-green-100"
                               : isPending
                               ? "bg-orange-50 text-orange-600 border-orange-100"
                               : "bg-red-50 text-red-600 border-red-100"
                           }`}
                         >
-                          {item.status}
+                          {item.status_approval}
                         </span>
                         <span className="text-[10px] font-black text-gray-300 uppercase">
                           {dayjs(item.tanggal).format("DD MMM YYYY")}
@@ -79,24 +117,32 @@ const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
 
                       <div>
                         <h4 className="text-base font-black text-custom-gelap tracking-tight uppercase">
-                          {item.tugas || "Pekerjaan Tambahan"}
+                          {item.nama_jenis_lembur}
                         </h4>
-                        <div className="flex items-center gap-4 mt-2">
+                        <p className="text-[11px] font-bold text-gray-400 mt-0.5 italic lowercase">
+                          "{item.keterangan}"
+                        </p>
+
+                        <div className="flex items-center gap-4 mt-3">
                           <div className="flex flex-col">
-                            <p className="text-[8px] font-black text-gray-400 uppercase">
+                            <p className="text-[7px] font-black text-gray-400 uppercase">
                               Durasi
                             </p>
                             <p className="text-xs font-black text-custom-gelap">
-                              {item.durasi} Jam
+                              {(item.menit_lembur / 60).toFixed(1)} Jam
                             </p>
                           </div>
                           <div className="w-px h-6 bg-gray-100"></div>
                           <div className="flex flex-col">
-                            <p className="text-[8px] font-black text-gray-400 uppercase">
+                            <p className="text-[7px] font-black text-gray-400 uppercase">
                               Estimasi Upah
                             </p>
                             <p className="text-xs font-black text-blue-600">
-                              Rp {item.upah}
+                              {item.total_bayaran
+                                ? `Rp ${item.total_bayaran.toLocaleString(
+                                    "id-ID"
+                                  )}`
+                                : "Menunggu"}
                             </p>
                           </div>
                         </div>
@@ -106,33 +152,37 @@ const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
                     <div
                       className={`p-3 rounded-2xl ${
                         isApproved
-                          ? "bg-blue-50 text-blue-600"
+                          ? "bg-green-50 text-green-600"
                           : isPending
                           ? "bg-orange-50 text-orange-600"
                           : "bg-red-50 text-red-600"
                       }`}
                     >
-                      <FiTrendingUp size={24} />
+                      {isApproved ? (
+                        <FiCheckCircle size={24} />
+                      ) : isPending ? (
+                        <FiClock size={24} />
+                      ) : (
+                        <FiXCircle size={24} />
+                      )}
                     </div>
                   </div>
 
-                  {/* Alasan Penolakan */}
-                  {isRejected && item.alasan && (
+                  {isRejected && item.alasan_penolakan && (
                     <div className="mt-4 p-4 bg-red-50/50 rounded-2xl border border-red-100 flex items-start gap-3 text-red-700">
                       <FiAlertCircle
                         size={16}
                         className="mt-0.5 flex-shrink-0"
                       />
                       <p className="text-[11px] font-bold italic">
-                        "{item.alasan}"
+                        "{item.alasan_penolakan}"
                       </p>
                     </div>
                   )}
 
-                  {/* Tombol Batalkan */}
                   {isPending && (
                     <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
-                      <button className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-red-50 transition-all">
+                      <button className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-red-50 transition-all bg-red-50/30">
                         <FiTrash2 size={14} /> Batalkan
                       </button>
                     </div>
@@ -141,7 +191,7 @@ const LemburHistoryModal = ({ isOpen, onClose, data = [] }) => {
               );
             })
           ) : (
-            <div className="py-20 text-center opacity-30 flex flex-col items-center">
+            <div className="flex-1 flex flex-col items-center justify-center py-24 opacity-30">
               <FiTrendingUp size={64} className="text-gray-400" />
               <p className="text-sm font-black uppercase mt-4 tracking-[4px]">
                 Belum ada lembur

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiArrowLeft, FiCalendar, FiUploadCloud } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
@@ -7,14 +7,18 @@ import dayjs from "dayjs";
 import "dayjs/locale/id";
 import PrimaryButton from "../components/PrimaryButton";
 import IzinHistoryModal from "../components/IzinHistoryModal";
+import Api from "../Api";
 
 const FormIzinSakit = () => {
   const navigate = useNavigate();
+  const [listJenisIzin, setListJenisIzin] = useState([]);
   const [date, setDate] = useState(dayjs());
   const [endDate, setEndDate] = useState(dayjs());
   const [reason, setReason] = useState("");
   const [type, setType] = useState("");
   const [attachment, setAttachment] = useState(null);
+
+  const [activeIzin, setActiveIzin] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const [showIzinModal, setShowIzinModal] = useState(false);
@@ -22,47 +26,76 @@ const FormIzinSakit = () => {
 
   const totalHari = endDate.diff(date, "day") + 1;
 
-  const handleSubmit = (e) => {
+  // Fetch Izin Aktif Hari Ini
+  useEffect(() => {
+    const checkActiveIzin = async () => {
+      try {
+        setIsLoading(true);
+        const today = dayjs().format("YYYY-MM-DD");
+        const res = await Api.get(`/perizinan/aktif?tanggal=${today}`);
+
+        // Jika data array tidak kosong, berarti ada izin aktif
+        if (res.data.data && res.data.data.length > 0) {
+          setActiveIzin(res.data.data[0]);
+        }
+      } catch (err) {
+        console.error("Gagal cek izin aktif", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkActiveIzin();
+  }, []);
+
+  // 1. Ambil Data Master Jenis Izin
+  useEffect(() => {
+    const fetchMasterIzin = async () => {
+      try {
+        const res = await Api.get("/master/jenis-izin");
+        setListJenisIzin(res.data.data);
+      } catch (err) {
+        console.error("Gagal memuat master izin", err);
+      }
+    };
+    fetchMasterIzin();
+  }, []);
+
+  // 2. Handle Submit dengan FormData
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!attachment) {
+      alert("Harap unggah dokumen lampiran");
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+
+    const formData = new FormData();
+    formData.append("id_jenis_izin", type);
+    formData.append("tanggal_mulai", date.format("YYYY-MM-DD"));
+    formData.append("tanggal_selesai", endDate.format("YYYY-MM-DD"));
+    formData.append("alasan", reason);
+    formData.append("lampiran", attachment);
+
+    try {
+      const res = await Api.post("/perizinan/pengajuan-izin", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data.success) {
+        alert("Pengajuan berhasil terkirim!");
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Gagal mengirim pengajuan");
+    } finally {
       setIsLoading(false);
-      navigate("/dashboard");
-    }, 500);
+    }
   };
 
-  const historyData = [
-    {
-      status: "approved",
-      keterangan: "Sakit Demam dan Flu Berat",
-      tgl_mulai: "2026-01-02",
-      tgl_selesai: "2026-01-04",
-      id_izin: "IZN-001",
-    },
-    {
-      status: "pending",
-      keterangan: "Izin Keperluan Menikah Saudara Kandung",
-      tgl_mulai: "2026-01-15",
-      tgl_selesai: "2026-01-15",
-      id_izin: "IZN-002",
-    },
-    {
-      status: "rejected",
-      keterangan: "Izin Liburan ke Luar Kota",
-      tgl_mulai: "2026-01-20",
-      tgl_selesai: "2026-01-22",
-      id_izin: "IZN-003",
-      alasan_penolakan:
-        "Jadwal operasional sedang padat, pengajuan izin ditolak sementara.",
-    },
-    {
-      status: "approved",
-      keterangan: "Sakit (Rawat Jalan)",
-      tgl_mulai: "2025-12-28",
-      tgl_selesai: "2025-12-29",
-      id_izin: "IZN-004",
-    },
-  ];
+  const hasActiveIzin = !!activeIzin;
 
   return (
     <div className="h-[100dvh] bg-gray-50 font-poppins flex flex-col overflow-hidden">
@@ -92,40 +125,89 @@ const FormIzinSakit = () => {
           </p>
         </div>
 
-        {/* 2. Floating Info Card - Font & Size Diperbesar */}
+        {/* 2. Floating Info Card - Dinamis berdasarkan status izin */}
         <div className="absolute -bottom-10 left-6 right-6 bg-white rounded-[30px] shadow-[0_15px_40px_-10px_rgba(0,0,0,0.15)] p-5 border border-gray-50 flex items-center justify-between divide-x divide-gray-100 z-10">
-          <div className="flex-1 flex flex-col items-center">
-            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
-              Sisa Cuti
-            </p>
-            <p className="text-xl font-black text-custom-gelap leading-none">
-              12{" "}
-              <span className="text-[12px] text-gray-400 font-bold ml-0.5">
-                HARI
-              </span>
-            </p>
-          </div>
-          <div className="flex-1 flex flex-col items-center pl-2 border-l border-gray-100">
-            <p className="text-[10px] text-custom-merah font-black uppercase tracking-widest mb-1">
-              Durasi Izin
-            </p>
-            <p className="text-xl font-black text-custom-merah leading-none">
-              {totalHari > 0 ? totalHari : 0}{" "}
-              <span className="text-[12px] opacity-60 font-bold ml-0.5">
-                HARI
-              </span>
-            </p>
-          </div>
+          {hasActiveIzin ? (
+            // Tampilan Jika Sudah Ada Izin Aktif
+            <div className="flex-1 flex flex-col items-center px-2 animate-in fade-in duration-500">
+              <p className="text-[10px] text-custom-merah font-black uppercase tracking-[2px]">
+                Status Pengajuan Anda
+              </p>
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-2 h-2 rounded-full animate-pulse ${
+                    activeIzin.status_approval === "pending"
+                      ? "bg-orange-500"
+                      : "bg-green-500"
+                  }`}
+                />
+                <p className="text-sm font-black text-custom-gelap uppercase tracking-[1px]">
+                  {activeIzin.nama_izin} ({activeIzin.status_approval})
+                </p>
+              </div>
+              <p className="text-[9px] font-bold text-gray-400 mt-1 italic uppercase leading-none">
+                {dayjs(activeIzin.tgl_mulai).format("DD MMM")} -{" "}
+                {dayjs(activeIzin.tgl_selesai).format("DD MMM YYYY")}
+              </p>
+            </div>
+          ) : (
+            // Tampilan Normal (Sisa Cuti & Durasi)
+            <>
+              <div className="flex-1 flex flex-col items-center">
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
+                  Sisa Cuti
+                </p>
+                <p className="text-xl font-black text-custom-gelap leading-none">
+                  12{" "}
+                  <span className="text-[12px] text-gray-400 font-bold ml-0.5">
+                    HARI
+                  </span>
+                </p>
+              </div>
+              <div className="flex-1 flex flex-col items-center pl-2">
+                <p className="text-[10px] text-custom-merah font-black uppercase tracking-widest mb-1">
+                  Durasi Izin
+                </p>
+                <p className="text-xl font-black text-custom-merah leading-none">
+                  {totalHari > 0 ? totalHari : 0}{" "}
+                  <span className="text-[12px] opacity-60 font-bold ml-0.5">
+                    HARI
+                  </span>
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 3. Form Content - Sharper, Contrasted & Indonesian Format */}
+      {/* 3. Form Content */}
       <form
         onSubmit={handleSubmit}
-        className="mt-14 px-6 flex-1 flex flex-col gap-4 pb-6 overflow-y-auto"
+        className={`mt-14 px-6 flex-1 flex flex-col gap-4 pb-6 overflow-y-auto transition-all duration-500 ${
+          hasActiveIzin ? "opacity-60 grayscale-[0.5]" : ""
+        }`}
       >
-        <div className="bg-white rounded-[40px] p-6 pb-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-4">
-          {/* Kategori Izin */}
+        <div
+          className={`bg-white rounded-[40px] p-6 pb-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-4 relative ${
+            hasActiveIzin ? "pointer-events-none" : ""
+          }`}
+        >
+          {/* Overlay Pesan Jika Terkunci */}
+          {hasActiveIzin && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-8 text-center bg-white/10 backdrop-blur-sm rounded-[40px]">
+              <div className="bg-custom-merah/10 p-4 rounded-full mb-3 text-custom-merah">
+                <FiCalendar size={32} />
+              </div>
+              <h4 className="text-sm font-black text-custom-gelap uppercase tracking-widest">
+                Akses Terkunci
+              </h4>
+              <p className="text-[10px] font-bold text-gray-500 mt-2 uppercase leading-relaxed">
+                Anda sudah memiliki pengajuan {activeIzin.nama_izin} <br /> yang
+                sedang aktif hari ini.
+              </p>
+            </div>
+          )}
+          {/* Mapping Kategori Izin dari API */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-gray-500 uppercase ml-3 tracking-[1.5px] flex items-center gap-1">
               Kategori Izin <span className="text-custom-merah text-xs">*</span>
@@ -138,11 +220,13 @@ const FormIzinSakit = () => {
                 required
               >
                 <option value="">Pilih Jenis</option>
-                <option value="3">Izin Keperluan Pribadi</option>
-                <option value="4">Sakit / Medis</option>
-                <option value="6">Izin Setengah Hari</option>
+                {listJenisIzin.map((item) => (
+                  <option key={item.id_jenis_izin} value={item.id_jenis_izin}>
+                    {item.nama_izin}
+                  </option>
+                ))}
               </select>
-              {/* Custom Arrow Icon */}
+              {/* Icon Arrow */}
               <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                 <svg
                   width="12"
@@ -251,18 +335,42 @@ const FormIzinSakit = () => {
           </div>
         </div>
 
-        {/* Action Button - Dengan Spinner & Disable Logic */}
-        <PrimaryButton type="submit" isLoading={isLoading}>
-          Kirim Pengajuan
-        </PrimaryButton>
+        {/* Button hanya muncul/aktif jika tidak ada izin aktif */}
+        {!hasActiveIzin ? (
+          <PrimaryButton type="submit" isLoading={isLoading}>
+            Kirim Pengajuan
+          </PrimaryButton>
+        ) : (
+          <button
+            disabled
+            className="w-full py-5 rounded-[25px] bg-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-[3px] cursor-not-allowed"
+          >
+            Sudah Ada Izin Aktif
+          </button>
+        )}
       </form>
 
       {/* Modal Riwayat Izin */}
       <IzinHistoryModal
         isOpen={showIzinModal}
         onClose={() => setShowIzinModal(false)}
-        data={historyData}
       />
+
+      {isLoading && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-white/40 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="flex flex-col items-center gap-4">
+            {/* Outer Ring */}
+            <div className="relative w-12 h-12">
+              <div className="absolute inset-0 border-4 border-custom-merah/20 rounded-full"></div>
+              {/* Spinning Ring */}
+              <div className="absolute inset-0 border-4 border-transparent border-t-custom-merah rounded-full animate-spin"></div>
+            </div>
+            <p className="text-[10px] font-black text-custom-gelap uppercase tracking-[3px] animate-pulse">
+              Memuat Data...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
