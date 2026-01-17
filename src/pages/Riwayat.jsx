@@ -43,7 +43,7 @@ const Riwayat = () => {
       // Format tanggal ke YYYY-MM-DD sesuai keinginan backend
       const formattedDate = date.format("YYYY-MM-DD");
       const res = await Api.get(
-        `/absensi/detail-basic?tanggal=${formattedDate}`
+        `/absensi/detail-basic?tanggal=${formattedDate}`,
       );
       setDetailData(res.data.data);
     } catch (err) {
@@ -386,6 +386,7 @@ const AttendanceListContent = ({ data, loading }) => {
         Menyusun Riwayat...
       </div>
     );
+
   if (!data || data.length === 0)
     return (
       <div className="py-10 text-center text-gray-400 text-[10px] uppercase font-bold">
@@ -397,9 +398,24 @@ const AttendanceListContent = ({ data, loading }) => {
     <div className="space-y-4 pb-10">
       {data.map((item, i) => {
         const isFuture = dayjs(item.tanggal).isAfter(dayjs(), "day");
-        const isToday = dayjs(item.tanggal).isSame(dayjs(), "day");
         const hasPresensi = !!item.presensi;
         const isCheckOut = !!item.presensi?.jam_keluar;
+
+        // Logika Status Hari
+        const isMinggu = item.hari?.is_minggu;
+        const isLibur = item.hari?.is_libur;
+        const isOffDay = isMinggu || isLibur;
+        const keteranganHari = item.hari?.keterangan || "Hari Kerja";
+        const hariText = dayjs(item.tanggal).locale("id").format("dddd");
+
+        // Konfigurasi Warna Card Berdasarkan Jenis Hari
+        let cardBgColor = "bg-white border-gray-100";
+        if (isOffDay) {
+          if (isMinggu)
+            cardBgColor = "bg-blue-100/40 border-blue-100 border-dashed"; // Soft Orange untuk Minggu
+          if (isLibur)
+            cardBgColor = "bg-blue-100/40 border-blue-100 border-dashed"; // Soft Blue untuk Libur Nasional
+        }
 
         // Data Stats
         const terlambat = item.presensi?.menit_terlambat || 0;
@@ -409,55 +425,65 @@ const AttendanceListContent = ({ data, loading }) => {
         return (
           <div
             key={i}
-            className={`bg-white rounded-[35px] p-5 shadow-sm border transition-all ${
-              isToday
-                ? "border-custom-merah/40 ring-1 ring-custom-merah/5 shadow-md"
-                : "border-gray-100"
-            } ${isFuture ? "opacity-30 pointer-events-none" : "opacity-100"}`}
+            className={`rounded-[35px] p-5 shadow-sm border transition-all ${cardBgColor} ${
+              isFuture ? "opacity-30 pointer-events-none" : "opacity-100"
+            }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 {/* Kalender Mini */}
-                <div
-                  className={`w-12 h-14 rounded-2xl flex flex-col items-center justify-center border transition-colors ${
-                    hasPresensi
-                      ? "bg-custom-merah border-custom-merah shadow-lg shadow-red-100"
-                      : "bg-gray-50 border-gray-100"
-                  }`}
-                >
-                  <span
-                    className={`text-[8px] font-black uppercase leading-none ${
-                      hasPresensi ? "text-white/70" : "text-gray-400"
+                <div className="flex flex-col items-center">
+                  <p
+                    className={`text-[7px] font-black uppercase mb-1 tracking-tighter ${isOffDay ? "text-custom-merah" : "text-gray-400"}`}
+                  >
+                    {hariText}
+                  </p>
+                  <div
+                    className={`w-12 h-14 rounded-2xl flex flex-col items-center justify-center border transition-colors ${
+                      hasPresensi
+                        ? "bg-custom-merah border-custom-merah shadow-lg shadow-red-100"
+                        : isOffDay
+                          ? "bg-white border-gray-200"
+                          : "bg-gray-50 border-gray-100"
                     }`}
                   >
-                    {dayjs(item.tanggal).format("MMM")}
-                  </span>
-                  <span
-                    className={`text-lg font-black leading-none mt-1 ${
-                      hasPresensi ? "text-white" : "text-custom-gelap"
-                    }`}
-                  >
-                    {dayjs(item.tanggal).format("DD")}
-                  </span>
+                    <span
+                      className={`text-[8px] font-black uppercase leading-none ${hasPresensi ? "text-white/70" : "text-gray-400"}`}
+                    >
+                      {dayjs(item.tanggal).format("MMM")}
+                    </span>
+                    <span
+                      className={`text-lg font-black leading-none mt-1 ${hasPresensi ? "text-white" : "text-custom-gelap"}`}
+                    >
+                      {dayjs(item.tanggal).format("DD")}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Info Utama */}
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-xs font-black text-custom-gelap uppercase tracking-tighter">
-                      {item.jam_kerja.jam_mulai} - {item.jam_kerja.jam_selesai}
-                    </h4>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* DAFTAR BADGE: Mendahulukan Keterangan Hari */}
+                    {isOffDay && (
+                      <span
+                        className={`text-[7px] font-black px-2 py-0.5 rounded uppercase border ${
+                          isMinggu
+                            ? "bg-blue-100 text-blue-600 border-blue-200"
+                            : "bg-blue-100 text-blue-600 border-blue-200"
+                        }`}
+                      >
+                        {keteranganHari}
+                      </span>
+                    )}
+
                     {hasPresensi ? (
                       <span
-                        className={`text-[7px] font-black px-2 py-0.5 rounded uppercase ${
-                          isCheckOut
-                            ? "bg-green-100 text-green-600"
-                            : "bg-blue-100 text-blue-600"
-                        }`}
+                        className={`text-[7px] font-black px-2 py-0.5 rounded uppercase ${isCheckOut ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}
                       >
                         {isCheckOut ? "Hadir" : "Aktif"}
                       </span>
                     ) : (
+                      !isOffDay &&
                       !isFuture && (
                         <span className="text-[7px] font-black bg-red-50 text-red-500 px-2 py-0.5 rounded uppercase border border-red-100">
                           Alpha
@@ -466,9 +492,13 @@ const AttendanceListContent = ({ data, loading }) => {
                     )}
                   </div>
 
+                  <h4 className="text-xs font-black text-custom-gelap uppercase tracking-tighter mt-1.5">
+                    {item.jam_kerja.jam_mulai} - {item.jam_kerja.jam_selesai}
+                  </h4>
+
                   {/* Jam Masuk & Keluar Real */}
                   <div className="flex items-center gap-3 mt-2">
-                    <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 bg-white/50 px-2 py-1 rounded-lg border border-gray-100">
                       <FiClock
                         size={10}
                         className={
@@ -479,12 +509,10 @@ const AttendanceListContent = ({ data, loading }) => {
                         {item.presensi?.jam_masuk || "--:--"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-lg">
+                    <div className="flex items-center gap-1.5 bg-white/50 px-2 py-1 rounded-lg border border-gray-100">
                       <FiArrowLeft
                         size={10}
-                        className={`rotate-180 ${
-                          isCheckOut ? "text-red-500" : "text-gray-300"
-                        }`}
+                        className={`rotate-180 ${isCheckOut ? "text-red-500" : "text-gray-300"}`}
                       />
                       <p className="text-[10px] font-black text-custom-gelap tracking-tight">
                         {item.presensi?.jam_keluar || "--:--"}
@@ -494,17 +522,14 @@ const AttendanceListContent = ({ data, loading }) => {
                 </div>
               </div>
 
-              {/* Stats Section - Dibuat Vertikal & Lebih Detail */}
-              {/* Stats Section - Dibuat Horizontal Row agar tetap ringkas */}
+              {/* Stats Section */}
               <div className="flex flex-col items-end gap-2 min-w-[80px]">
                 <div className="text-right">
-                  <p className="text-[7px] font-black text-gray-300 uppercase leading-none tracking-widest mb-1.5">
+                  <p className="text-[7px] font-black text-gray-300 uppercase leading-none mb-1.5">
                     Total Kerja
                   </p>
                   <p
-                    className={`text-[13px] font-black leading-none ${
-                      totalKerja > 0 ? "text-custom-gelap" : "text-gray-200"
-                    }`}
+                    className={`text-[13px] font-black leading-none ${totalKerja > 0 ? "text-custom-gelap" : "text-gray-200"}`}
                   >
                     {totalKerja}{" "}
                     <span className="text-[8px] text-gray-400 font-bold">
@@ -513,17 +538,14 @@ const AttendanceListContent = ({ data, loading }) => {
                   </p>
                 </div>
 
-                {/* Row Keterangan: Telat & Break Berjejer Samping */}
                 <div className="flex gap-1 justify-end">
                   {terlambat > 0 && (
                     <div className="bg-orange-50 text-orange-600 text-[6.5px] font-black px-1.5 py-0.5 rounded-md border border-orange-100 uppercase flex items-center gap-0.5">
-                      <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse" />
                       T: {terlambat}m
                     </div>
                   )}
                   {istirahat > 0 && (
                     <div className="bg-blue-50 text-blue-600 text-[6.5px] font-black px-1.5 py-0.5 rounded-md border border-blue-100 uppercase flex items-center gap-0.5">
-                      <div className="w-1 h-1 bg-blue-400 rounded-full" />
                       B: {istirahat}m
                     </div>
                   )}
@@ -533,26 +555,36 @@ const AttendanceListContent = ({ data, loading }) => {
           </div>
         );
       })}
-      {/* FOOTER LEGEND / KETERANGAN */}
+
+      {/* FOOTER LEGEND */}
       {!loading && data.length > 0 && (
-        <div className="mt-8 flex justify-center gap-6 border-t border-gray-100 pt-6 opacity-60">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-orange-400 rounded-full shadow-sm" />
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-              <span className="text-orange-600">T</span> : Terlambat
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-400 rounded-full shadow-sm" />
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-              <span className="text-blue-600">B</span> : Break / Istirahat
-            </p>
-          </div>
+        <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 border-t border-gray-100 pt-6 opacity-60">
+          <LegendItem
+            color="bg-blue-100 border border-blue-200"
+            label="Minggu"
+          />
+          <LegendItem
+            color="bg-blue-100 border border-blue-200"
+            label="Hari Libur"
+          />
+          <LegendItem
+            color="bg-red-50 border border-red-100"
+            label="Alpha / Tanpa Ket"
+          />
         </div>
       )}
     </div>
   );
 };
+
+const LegendItem = ({ color, label }) => (
+  <div className="flex items-center gap-2">
+    <div className={`w-3 h-3 ${color} rounded-md`} />
+    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+      {label}
+    </p>
+  </div>
+);
 
 // 3. REKAP BULANAN (TAB 2)
 const SummaryHistoryContent = ({ data, loading }) => {

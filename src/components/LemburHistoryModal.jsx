@@ -1,31 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { IoMdClose } from "react-icons/io";
-import {
-  FiCheckCircle,
-  FiClock,
-  FiXCircle,
-  FiTrash2,
-  FiTrendingUp,
-  FiAlertCircle,
-} from "react-icons/fi";
+import { FiTrash2, FiTrendingUp, FiImage } from "react-icons/fi";
 import dayjs from "dayjs";
 import Api from "../Api";
+import ImagePreviewModal from "./ImagePreviewModal";
 
 const LemburHistoryModal = ({ isOpen, onClose }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(null);
 
-  // Fetch data saat modal terbuka
+  const [previewData, setPreviewData] = useState({ isOpen: false, url: "" });
+
   useEffect(() => {
     if (isOpen) {
       const fetchHistory = async () => {
         setLoading(true);
         try {
-          // Mengambil data bulan & tahun saat ini
           const bulan = dayjs().month() + 1;
           const tahun = dayjs().year();
           const res = await Api.get(
-            `/lembur/history?bulan=${bulan}&tahun=${tahun}`
+            `/lembur/history?bulan=${bulan}&tahun=${tahun}`,
           );
           setHistory(res.data.data || []);
         } catch (err) {
@@ -38,178 +33,200 @@ const LemburHistoryModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  const handleDelete = async (id_lembur) => {
+    if (
+      !window.confirm(
+        "Apakah Anda yakin ingin membatalkan pengajuan lembur ini?",
+      )
+    )
+      return;
+
+    setDeleteLoading(id_lembur);
+    try {
+      const res = await Api.delete(`/lembur/${id_lembur}`);
+      if (res.data.success) {
+        // Filter out data dari state lokal agar langsung hilang dari UI
+        setHistory((prev) =>
+          prev.filter((item) => item.id_lembur !== id_lembur),
+        );
+        alert("Pengajuan berhasil dibatalkan");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Gagal membatalkan pengajuan";
+      alert(msg);
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[150] flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-lg rounded-[45px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-500">
-        {/* Header Modal */}
-        <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
+      <div className="bg-white w-full max-w-lg rounded-[45px] h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-500">
+        {/* Header - Lebih Slim */}
+        <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-10">
           <div>
-            <h2 className="text-xl font-black text-custom-gelap uppercase tracking-widest leading-none">
+            <h2 className="text-lg font-black text-custom-gelap uppercase tracking-widest leading-none">
               Riwayat Lembur
             </h2>
-            {/* <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">
-              Pantau jam lembur & upah
-            </p> */}
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">
+              Klik Lampiran untuk melihat bukti
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="bg-gray-100 p-2.5 rounded-full text-gray-500 active:scale-90 transition-all shadow-sm"
+            className="bg-gray-100 p-2 rounded-full text-gray-500 active:scale-90 transition-all"
           >
-            <IoMdClose size={24} />
+            <IoMdClose size={20} />
           </button>
         </div>
 
-        {/* List Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-gray-50/30 custom-scrollbar min-h-[300px] flex flex-col">
+        {/* List Content - Area Scrollable */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/30 custom-scrollbar">
           {loading ? (
-            /* Simple Spinner */
             <div className="flex-1 flex flex-col items-center justify-center py-20">
-              <div className="relative w-10 h-10 mb-4">
-                <div className="absolute inset-0 border-4 border-custom-merah/10 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-transparent border-t-custom-merah rounded-full animate-spin"></div>
-              </div>
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[3px] animate-pulse">
-                Menghubungkan...
-              </p>
+              <div className="w-10 h-10 border-4 border-custom-merah/10 border-t-custom-merah rounded-full animate-spin" />
             </div>
-          ) : history && history.length > 0 ? (
+          ) : history.length > 0 ? (
             history.map((item, index) => {
               const status = item.status_approval?.toLowerCase();
               const isApproved = status === "approved";
               const isPending = status === "pending";
-              const isRejected = status === "rejected";
+              // const isRejected = status === "rejected";
 
               return (
                 <div
                   key={item.id_lembur || index}
-                  className="bg-white p-5 rounded-[35px] border border-gray-100 shadow-sm relative overflow-hidden transition-all active:scale-[0.98]"
+                  className="bg-white p-4 rounded-[30px] border border-gray-100 shadow-sm relative overflow-hidden flex flex-col gap-3"
                 >
+                  {/* Status Strip Samping */}
                   <div
-                    className={`absolute left-0 top-0 bottom-0 w-2 ${
-                      isApproved
-                        ? "bg-green-500"
-                        : isPending
-                        ? "bg-orange-400"
-                        : "bg-red-500"
-                    }`}
+                    className={`absolute left-0 top-0 bottom-0 w-1.5 ${isApproved ? "bg-green-500" : isPending ? "bg-orange-400" : "bg-red-500"}`}
                   />
 
                   <div className="flex justify-between items-start pl-2">
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      {/* Badge & Tanggal */}
+                      <div className="flex items-center gap-2 mb-2">
                         <span
-                          className={`text-[9px] font-black px-3 py-1 rounded-lg uppercase border ${
+                          className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase border ${
                             isApproved
                               ? "bg-green-50 text-green-600 border-green-100"
                               : isPending
-                              ? "bg-orange-50 text-orange-600 border-orange-100"
-                              : "bg-red-50 text-red-600 border-red-100"
+                                ? "bg-orange-50 text-orange-600 border-orange-100"
+                                : "bg-red-50 text-red-600 border-red-100"
                           }`}
                         >
                           {item.status_approval}
                         </span>
-                        <span className="text-[10px] font-black text-gray-300 uppercase">
-                          {dayjs(item.tanggal).format("DD MMM YYYY")}
+                        <span className="text-[9px] font-black text-gray-300 uppercase">
+                          {dayjs(item.tanggal).format("DD/MM/YYYY")}
                         </span>
                       </div>
 
-                      <div>
-                        <h4 className="text-base font-black text-custom-gelap tracking-tight uppercase">
-                          {item.nama_jenis_lembur}
-                        </h4>
-                        <p className="text-[11px] font-bold text-gray-400 mt-0.5 italic lowercase">
-                          "{item.keterangan}"
-                        </p>
-
-                        <div className="flex items-center gap-4 mt-3">
-                          <div className="flex flex-col">
-                            <p className="text-[7px] font-black text-gray-400 uppercase">
-                              Durasi
-                            </p>
-                            <p className="text-xs font-black text-custom-gelap">
-                              {(item.menit_lembur / 60).toFixed(1)} Jam
-                            </p>
-                          </div>
-                          <div className="w-px h-6 bg-gray-100"></div>
-                          <div className="flex flex-col">
-                            <p className="text-[7px] font-black text-gray-400 uppercase">
-                              Estimasi Upah
-                            </p>
-                            <p className="text-xs font-black text-blue-600">
-                              {item.total_bayaran
-                                ? `Rp ${item.total_bayaran.toLocaleString(
-                                    "id-ID"
-                                  )}`
-                                : "Menunggu"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      <h4 className="text-sm font-black text-custom-gelap uppercase leading-tight">
+                        {item.nama_jenis_lembur}
+                      </h4>
+                      <p className="text-[10px] font-bold text-gray-400 mt-0.5 truncate max-w-[200px]">
+                        {item.keterangan || "Tanpa keterangan"}
+                      </p>
                     </div>
 
-                    <div
-                      className={`p-3 rounded-2xl ${
-                        isApproved
-                          ? "bg-green-50 text-green-600"
-                          : isPending
-                          ? "bg-orange-50 text-orange-600"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
-                      {isApproved ? (
-                        <FiCheckCircle size={24} />
-                      ) : isPending ? (
-                        <FiClock size={24} />
-                      ) : (
-                        <FiXCircle size={24} />
-                      )}
+                    {/* Durasi Info */}
+                    <div className="text-right">
+                      <p className="text-[8px] font-black text-gray-300 uppercase leading-none">
+                        Durasi
+                      </p>
+                      <p className="text-sm font-black text-custom-gelap mt-1">
+                        {(item.menit_lembur / 60).toFixed(1)}{" "}
+                        <span className="text-[8px] opacity-50 uppercase">
+                          Jam
+                        </span>
+                      </p>
                     </div>
                   </div>
 
-                  {isRejected && item.alasan_penolakan && (
-                    <div className="mt-4 p-4 bg-red-50/50 rounded-2xl border border-red-100 flex items-start gap-3 text-red-700">
-                      <FiAlertCircle
-                        size={16}
-                        className="mt-0.5 flex-shrink-0"
-                      />
-                      <p className="text-[11px] font-bold italic">
-                        "{item.alasan_penolakan}"
-                      </p>
-                    </div>
-                  )}
-
-                  {isPending && (
-                    <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
-                      <button className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-red-50 transition-all bg-red-50/30">
-                        <FiTrash2 size={14} /> Batalkan
+                  {/* Footer Card: Lampiran & Action */}
+                  <div className="pl-2 pt-3 border-t border-gray-50 flex items-center justify-between">
+                    {item.path_lampiran ? (
+                      <button
+                        onClick={() =>
+                          setPreviewData({
+                            isOpen: true,
+                            url: item.path_lampiran,
+                          })
+                        }
+                        className="flex items-center gap-2 text-blue-600"
+                      >
+                        <FiImage size={14} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">
+                          Lihat Lampiran
+                        </span>
                       </button>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center gap-2 text-gray-300 italic">
+                        <FiImage size={14} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest leading-none">
+                          No File
+                        </span>
+                      </div>
+                    )}
+
+                    {isPending && (
+                      <button
+                        onClick={() => handleDelete(item.id_lembur)}
+                        disabled={deleteLoading === item.id_lembur}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all ${
+                          deleteLoading === item.id_lembur
+                            ? "bg-gray-100 text-gray-400"
+                            : "text-red-500 hover:bg-red-50"
+                        }`}
+                      >
+                        {deleteLoading === item.id_lembur ? (
+                          <div className="w-3 h-3 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin" />
+                        ) : (
+                          <FiTrash2 size={12} />
+                        )}
+                        <span className="text-[9px] font-black uppercase tracking-widest">
+                          {deleteLoading === item.id_lembur
+                            ? "Proses..."
+                            : "Batal"}
+                        </span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center py-24 opacity-30">
-              <FiTrendingUp size={64} className="text-gray-400" />
-              <p className="text-sm font-black uppercase mt-4 tracking-[4px]">
-                Belum ada lembur
+            <div className="flex-1 flex flex-col items-center justify-center opacity-20 py-20">
+              <FiTrendingUp size={48} />
+              <p className="text-[10px] font-black uppercase mt-4 tracking-[3px]">
+                Belum Ada Data
               </p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-7 bg-white border-t border-gray-100">
+        {/* Footer Modal */}
+        <div className="p-6 bg-white border-t border-gray-100">
           <button
             onClick={onClose}
-            className="w-full py-5 bg-gray-900 text-white rounded-[25px] font-black text-xs uppercase tracking-[3px] active:scale-95 transition-all shadow-lg shadow-gray-200"
+            className="w-full py-4 bg-custom-gelap text-white rounded-[20px] font-black text-[10px] uppercase tracking-[3px] active:scale-95 transition-all"
           >
             Tutup Riwayat
           </button>
         </div>
       </div>
+
+      {/* Panggil Modal Universal di paling bawah */}
+      <ImagePreviewModal
+        isOpen={previewData.isOpen}
+        onClose={() => setPreviewData({ ...previewData, isOpen: false })}
+        imageUrl={previewData.url}
+        title="Bukti Lembur"
+      />
     </div>
   );
 };

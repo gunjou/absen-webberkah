@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiArrowLeft, FiClock, FiUploadCloud } from "react-icons/fi";
+import { FiArrowLeft, FiUploadCloud } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import {
   LocalizationProvider,
@@ -17,10 +17,10 @@ const FormLembur = () => {
   const navigate = useNavigate();
   const [date, setDate] = useState(dayjs());
   const [startTime, setStartTime] = useState(
-    dayjs().set("hour", 17).set("minute", 0)
+    dayjs().set("hour", 17).set("minute", 0),
   );
   const [endTime, setEndTime] = useState(
-    dayjs().set("hour", 19).set("minute", 0)
+    dayjs().set("hour", 19).set("minute", 0),
   );
   const [reason, setReason] = useState("");
   const [attachment, setAttachment] = useState(null);
@@ -28,7 +28,6 @@ const FormLembur = () => {
   const [listJenisLembur, setListJenisLembur] = useState([]);
   const [type, setType] = useState("");
   const [showLemburModal, setShowLemburModal] = useState(false);
-  const [activeLembur, setActiveLembur] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
 
   // 1. Fetch Master Jenis Lembur
@@ -45,26 +44,6 @@ const FormLembur = () => {
     };
     fetchMasterLembur();
   }, []);
-
-  useEffect(() => {
-    const checkActiveLembur = async () => {
-      try {
-        setIsChecking(true);
-        // Mengambil status lembur aktif hari ini
-        const res = await api.get("/lembur/aktif");
-        if (res.data.data && res.data.data.length > 0) {
-          setActiveLembur(res.data.data[0]);
-        }
-      } catch (err) {
-        console.error("Gagal cek lembur aktif", err);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-    checkActiveLembur();
-  }, []);
-
-  const hasActiveLembur = !!activeLembur;
 
   const hitungDurasi = () => {
     if (!startTime || !endTime) return "0";
@@ -134,47 +113,18 @@ const FormLembur = () => {
         </div>
 
         {/* 2. Floating Info Card - Konsisten & Dinamis */}
-        <div className="absolute -bottom-10 left-6 right-6 bg-white rounded-[30px] shadow-[0_15px_40px_-10px_rgba(0,0,0,0.15)] p-4 border border-gray-50 flex items-center justify-center z-10 min-h-[85px]">
-          {hasActiveLembur ? (
-            <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 text-center">
-              <p className="text-[10px] text-custom-merah font-black uppercase tracking-[2px] mb-2">
-                Lembur Sedang Berjalan
-              </p>
-
-              <div className="flex items-center gap-3">
-                {/* Kolom Kiri: Badge Status */}
-                <div className="flex items-center gap-2 bg-orange-50 px-4 py-1.5 rounded-full border border-orange-100 flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
-                  <p className="text-[11px] font-black text-orange-700 uppercase tracking-tighter">
-                    {activeLembur.nama_lembur} • {activeLembur.status_approval}
-                  </p>
-                </div>
-
-                {/* Kolom Kanan: Detail Tanggal & Jam */}
-                <div className="flex flex-col items-start text-left border-l border-gray-100 pl-3">
-                  <p className="text-[9px] font-black text-custom-gelap uppercase tracking-tighter leading-none">
-                    {dayjs(activeLembur.tanggal).format("DD MMM YYYY")}
-                  </p>
-                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                    {activeLembur.jam_mulai} - {activeLembur.jam_selesai}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Tampilan Estimasi Normal
-            <div className="flex flex-col items-center">
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
-                Estimasi Durasi Lembur
-              </p>
-              <p className="text-xl font-black text-custom-merah leading-none">
-                {hitungDurasi()}{" "}
-                <span className="text-[12px] opacity-60 font-bold ml-0.5">
-                  JAM
-                </span>
-              </p>
-            </div>
-          )}
+        <div className="absolute -bottom-10 left-6 right-6 bg-white rounded-[30px] shadow-[0_15px_40px_-10px_rgba(0,0,0,0.15)] p-5 border border-gray-100 flex items-center justify-center z-10 min-h-[85px]">
+          <div className="flex flex-col items-center">
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
+              Estimasi Durasi Lembur
+            </p>
+            <p className="text-xl font-black text-custom-merah leading-none">
+              {hitungDurasi()}{" "}
+              <span className="text-[12px] opacity-60 font-bold ml-0.5 uppercase">
+                JAM
+              </span>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -183,26 +133,7 @@ const FormLembur = () => {
         onSubmit={handleSubmit}
         className="mt-14 px-6 flex-1 flex flex-col gap-4 pb-6 overflow-y-auto"
       >
-        <div
-          className={`bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-5 relative ${
-            hasActiveLembur ? "pointer-events-none" : ""
-          }`}
-        >
-          {/* Overlay Pesan Jika Terkunci */}
-          {hasActiveLembur && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-8 text-center bg-white/20 backdrop-blur-[1px] rounded-[40px]">
-              <div className="bg-custom-merah/10 p-4 rounded-full mb-3 text-custom-merah">
-                <FiClock size={32} />
-              </div>
-              <h4 className="text-sm font-black text-custom-gelap uppercase tracking-widest">
-                Form Terkunci
-              </h4>
-              <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase leading-relaxed">
-                Anda memiliki pengajuan lembur <br /> yang sedang diproses hari
-                ini.
-              </p>
-            </div>
-          )}
+        <div className="bg-white rounded-[40px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 space-y-3 relative">
           {/* FIELD BARU: Kategori Lembur */}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-500 uppercase ml-4 tracking-[1.5px] flex items-center gap-1">
@@ -212,7 +143,7 @@ const FormLembur = () => {
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-[22px] py-4 px-6 text-sm font-black text-custom-gelap outline-none focus:border-custom-merah/40 focus:bg-white transition-all appearance-none shadow-sm"
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-[22px] py-3 px-6 text-sm font-black text-custom-gelap outline-none focus:border-custom-merah/40 focus:bg-white transition-all appearance-none shadow-sm"
                 required
               >
                 <option value="">Pilih Kategori Lembur</option>
@@ -319,7 +250,7 @@ const FormLembur = () => {
               onChange={(e) => setReason(e.target.value)}
               className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-3 px-6 text-sm font-bold text-custom-gelap outline-none focus:border-custom-merah/40 focus:bg-white transition-all shadow-sm placeholder:text-gray-300"
               placeholder="Apa yang dikerjakan?"
-              rows="2"
+              rows="1"
               required
             />
           </div>
@@ -332,7 +263,7 @@ const FormLembur = () => {
             </label>
             <label
               htmlFor="file-upload"
-              className={`flex items-center gap-4 py-4 px-6 border-2 border-dashed rounded-[22px] cursor-pointer transition-all ${
+              className={`flex items-center gap-4 py-3 px-6 border-2 border-dashed rounded-[22px] cursor-pointer transition-all ${
                 attachment
                   ? "border-green-500 bg-green-50 text-green-600 shadow-inner"
                   : "border-gray-100 bg-gray-50 text-gray-400 shadow-sm"
@@ -355,18 +286,9 @@ const FormLembur = () => {
 
         {/* Button Action */}
         <div className="mt-auto">
-          {!hasActiveLembur ? (
-            <PrimaryButton type="submit" isLoading={isLoading}>
-              Kirim Pengajuan Lembur
-            </PrimaryButton>
-          ) : (
-            <button
-              disabled
-              className="w-full py-5 rounded-[25px] bg-gray-100 text-gray-400 font-black text-[10px] uppercase tracking-[3px] cursor-not-allowed border border-gray-200"
-            >
-              Sudah Ada Lembur Aktif
-            </button>
-          )}
+          <PrimaryButton type="submit" isLoading={isLoading}>
+            Kirim Pengajuan Lembur
+          </PrimaryButton>
         </div>
       </form>
 
