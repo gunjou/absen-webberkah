@@ -422,6 +422,9 @@ const AttendanceListContent = ({ data, loading }) => {
         const istirahat = item.presensi?.total_menit_istirahat || 0;
         const totalKerja = item.presensi?.total_menit_kerja || 0;
 
+        const jamKerja = Math.floor(totalKerja / 60);
+        const menitKerja = totalKerja % 60;
+
         return (
           <div
             key={i}
@@ -524,18 +527,30 @@ const AttendanceListContent = ({ data, loading }) => {
 
               {/* Stats Section */}
               <div className="flex flex-col items-end gap-2 min-w-[80px]">
-                <div className="text-right">
-                  <p className="text-[7px] font-black text-gray-300 uppercase leading-none mb-1.5">
+                <div className="text-right flex flex-col items-end">
+                  <p className="text-[7px] font-black text-gray-300 uppercase leading-none mb-1.5 tracking-tighter">
                     Total Kerja
                   </p>
-                  <p
-                    className={`text-[13px] font-black leading-none ${totalKerja > 0 ? "text-custom-gelap" : "text-gray-200"}`}
+
+                  <div
+                    className={`flex items-baseline gap-0.5 ${totalKerja > 0 ? "text-custom-gelap" : "text-gray-200"}`}
                   >
-                    {totalKerja}{" "}
-                    <span className="text-[8px] text-gray-400 font-bold">
-                      Min
+                    {/* Angka Jam */}
+                    <p className="text-[14px] font-black leading-none">
+                      {jamKerja}
+                    </p>
+                    <span className="text-[8px] font-bold text-gray-400 mr-1">
+                      J
                     </span>
-                  </p>
+
+                    {/* Angka Menit */}
+                    <p className="text-[14px] font-black leading-none">
+                      {menitKerja}
+                    </p>
+                    <span className="text-[8px] font-bold text-gray-400">
+                      M
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex gap-1 justify-end">
