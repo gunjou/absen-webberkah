@@ -36,10 +36,16 @@ const Dashboard = () => {
   const [isShift, setIsShift] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [selectedShiftId, setSelectedShiftId] = useState(null);
+  // const [shift, setShift] = useState({
+  //   mulai: "08:00",
+  //   selesai: "17:00",
+  //   nama: "Normal",
+  // });
+  // Shift selama bulan puasa
   const [shift, setShift] = useState({
     mulai: "08:00",
-    selesai: "17:00",
-    nama: "Normal",
+    selesai: "16:30",
+    nama: "Ramadhan",
   });
   const [presensi, setPresensi] = useState({
     jam_masuk: null,
@@ -52,6 +58,14 @@ const Dashboard = () => {
     terlambat_istirahat: 0,
     lokasi_balik: null,
   });
+
+  // Cek apakah waktu sekarang sudah melewati atau sama dengan waktu shift selesai
+  const isShiftFinished =
+    dayjs().isAfter(
+      dayjs(dayjs().format("YYYY-MM-DD") + " " + shift.selesai),
+    ) || dayjs().format("HH:mm") === shift.selesai;
+  // Tentukan apakah tombol harus di-disable (Hanya untuk kondisi Absen Pulang)
+  const isPulangDisabled = presensi.istirahat_selesai && !isShiftFinished;
 
   const getGreeting = () => {
     const hour = dayjs().hour(); // Mengambil jam (0-23)
@@ -273,7 +287,6 @@ const Dashboard = () => {
         </div>
 
         {/* Floating Card */}
-        {/* Floating Card */}
         <div className="absolute -bottom-14 left-6 right-6 bg-white rounded-[35px] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] p-6 border border-gray-50 h-[120px] flex flex-col justify-center">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
@@ -282,8 +295,8 @@ const Dashboard = () => {
                   activeIzin
                     ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
                     : presensi.jam_keluar
-                    ? "bg-green-500"
-                    : "bg-custom-merah animate-pulse"
+                      ? "bg-green-500"
+                      : "bg-custom-merah animate-pulse"
                 }`}
               ></div>
               <span className="text-[11px] font-black text-custom-gelap uppercase">
@@ -321,7 +334,13 @@ const Dashboard = () => {
               /* Tombol Absen Normal */
               <button
                 onClick={handleMainAction}
-                className="flex-1 bg-gradient-to-r from-custom-merah to-custom-gelap text-white h-[52px] px-4 rounded-[22px] text-xs font-black shadow-lg shadow-custom-merah/30 active:scale-95 transition-all uppercase tracking-widest"
+                disabled={isPulangDisabled} // Disable jika belum waktunya pulang
+                className={`flex-1 h-[52px] px-4 rounded-[22px] text-xs font-black shadow-lg uppercase tracking-widest transition-all 
+    ${
+      isPulangDisabled
+        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+        : "bg-gradient-to-r from-custom-merah to-custom-gelap text-white shadow-custom-merah/30 active:scale-95"
+    }`}
               >
                 {!presensi.jam_masuk && "Absen Masuk"}
                 {presensi.jam_masuk &&
@@ -330,7 +349,18 @@ const Dashboard = () => {
                 {presensi.istirahat_mulai &&
                   !presensi.istirahat_selesai &&
                   "Selesai Istirahat"}
-                {presensi.istirahat_selesai && "Absen Pulang"}
+
+                {/* Kondisi Khusus Teks Absen Pulang */}
+                {presensi.istirahat_selesai && (
+                  <div className="flex flex-col items-center">
+                    <span>Absen Pulang</span>
+                    {isPulangDisabled && (
+                      <span className="text-[7px] font-bold opacity-60 tracking-tighter normal-case">
+                        Tersedia pukul {shift.selesai}
+                      </span>
+                    )}
+                  </div>
+                )}
               </button>
             ) : (
               /* Pesan Selesai */
