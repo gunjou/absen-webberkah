@@ -36,17 +36,17 @@ const Dashboard = () => {
   const [isShift, setIsShift] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [selectedShiftId, setSelectedShiftId] = useState(null);
-  // const [shift, setShift] = useState({
-  //   mulai: "08:00",
-  //   selesai: "17:00",
-  //   nama: "Normal",
-  // });
-  // Shift selama bulan puasa
   const [shift, setShift] = useState({
     mulai: "08:00",
-    selesai: "16:30",
-    nama: "Ramadhan",
+    selesai: "17:00",
+    nama: "Normal",
   });
+  // Shift selama bulan puasa
+  // const [shift, setShift] = useState({
+  //   mulai: "08:00",
+  //   selesai: "16:30",
+  //   nama: "Ramadhan",
+  // });
   const [presensi, setPresensi] = useState({
     jam_masuk: null,
     lokasi_masuk: null,
