@@ -32,6 +32,7 @@ const Dashboard = () => {
 
   // Data State
   const [pegawai, setPegawai] = useState({ nama: "" });
+  const [tanggalAbsen, setTanggalAbsen] = useState(null);
   const [activeIzin, setActiveIzin] = useState(null);
   const [isShift, setIsShift] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
@@ -102,6 +103,7 @@ const Dashboard = () => {
 
       // Map Pegawai
       setPegawai({ nama: data.pegawai.nama_panggilan });
+      setTanggalAbsen(data.tanggal);
 
       // Map Check Bisa milih shift
       setIsShift(data.pegawai.is_shift === 1 || data.pegawai.is_shift === true);
@@ -304,7 +306,9 @@ const Dashboard = () => {
               </span>
             </div>
             <span className="text-[11px] text-gray-500 font-bold uppercase tracking-tight">
-              {dayjs().locale("id").format("dddd, D MMM YYYY")}
+              {presensi.jam_masuk && !presensi.jam_keluar && tanggalAbsen
+                ? dayjs(tanggalAbsen).locale("id").format("dddd, D MMM YYYY")
+                : dayjs().locale("id").format("dddd, D MMM YYYY")}
             </span>
           </div>
 
