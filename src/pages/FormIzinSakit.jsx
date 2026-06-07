@@ -12,6 +12,7 @@ import Api from "../Api";
 const FormIzinSakit = () => {
   const navigate = useNavigate();
   const [listJenisIzin, setListJenisIzin] = useState([]);
+  const [dataCuti, setDataCuti] = useState([]);
   const [date, setDate] = useState(dayjs());
   const [endDate, setEndDate] = useState(dayjs());
   const [reason, setReason] = useState("");
@@ -52,7 +53,9 @@ const FormIzinSakit = () => {
     const fetchMasterIzin = async () => {
       try {
         const res = await Api.get("/master/jenis-izin");
+        const resSisaCuti = await Api.get("/pegawai/cuti/me");
         setListJenisIzin(res.data.data);
+        setDataCuti(resSisaCuti.data.data);
       } catch (err) {
         console.error("Gagal memuat master izin", err);
       }
@@ -158,7 +161,7 @@ const FormIzinSakit = () => {
                   Sisa Cuti
                 </p>
                 <p className="text-xl font-black text-custom-gelap leading-none">
-                  12{" "}
+                  {dataCuti.sisa_cuti > 0 ? dataCuti.sisa_cuti : 0}{" "}
                   <span className="text-[12px] text-gray-400 font-bold ml-0.5">
                     HARI
                   </span>
